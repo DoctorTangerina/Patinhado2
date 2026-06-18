@@ -76,7 +76,7 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(choices=[('pendente', 'Pendente'), ('aprovado', 'Aprovado'), ('rejeitado', 'Rejeitado')], default='pendente', max_length=10)),
                 ('data_pedido', models.DateTimeField(auto_now_add=True)),
                 ('data_resposta', models.DateTimeField(blank=True, null=True)),
-                ('animal', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pedidos_adocao', to='PatinhadoWeb.pet')),
+                ('animal', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pedidos_adocao', to='backend.pet')),
                 ('solicitante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pedidos_adocao', to=settings.AUTH_USER_MODEL)),
             ],
             options={

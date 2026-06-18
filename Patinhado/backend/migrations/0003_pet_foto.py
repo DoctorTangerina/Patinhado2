@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('PatinhadoWeb', '0002_alter_pedidoadocao_id_alter_pet_id_alter_usuario_id'),
+        ('backend', '0002_alter_pedidoadocao_id_alter_pet_id_alter_usuario_id'),
     ]
 
     operations = [
