@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'backend'
 ]
 
@@ -132,6 +133,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
 from datetime import timedelta
@@ -140,4 +142,30 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Patinhado API",
+    "VERSION": "1.0.0",
+    "DESCRIPTION": (
+        "API para plataforma de adoção de animais Patinhado. "
+        "Permite gerenciar pets, usuários e pedidos de adoção."
+    ),
+    "CONTACT": {"name": "Patinhado", "email": "contato@patinhado.com"},
+    "LICENSE": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "deepLinking": True,
+        "displayRequestDuration": True,
+        "filter": True,
+    },
+    "SECURITY": [{"BearerAuth": []}],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SORT_OPERATIONS": True,
+    "TAGS": [
+        {"name": "Autenticação", "description": "Registro, login, tokens JWT e perfil"},
+        {"name": "Pets", "description": "Listagem, criação e gerenciamento de pets"},
+        {"name": "Pedidos de Adoção", "description": "CRUD e ações de aprovação/rejeição/cancelamento"},
+    ],
 }

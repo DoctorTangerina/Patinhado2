@@ -1,17 +1,11 @@
 from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-    TokenVerifyView,
-)
-
 from . import views
 
 urlpatterns = [
     path("auth/register/", views.RegisterView.as_view(), name="auth_register"),
-    path("auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path("auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    path("auth/token/", views.TokenObtainPairViewExt.as_view(), name="token_obtain_pair"),
+    path("auth/token/refresh/", views.TokenRefreshViewExt.as_view(), name="token_refresh"),
+    path("auth/token/verify/", views.TokenVerifyViewExt.as_view(), name="token_verify"),
     path("auth/profile/", views.ProfileView.as_view(), name="auth_profile"),
     path("pets/", views.PetListCreateAPIView.as_view(), name="pet_list_create"),
     path("pets/<int:pk>/", views.PetDetailAPIView.as_view(), name="pet_detail"),

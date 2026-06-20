@@ -30,7 +30,7 @@ class Pet(models.Model):
         OUTRO = "outro", "Outro"
 
     nome = models.CharField(max_length=100)
-    especie = models.CharField(max_length=20, choices=Especie.choices, default=Especie.CACHORRO)
+    especie = models.CharField(max_length=20, choices=Especie.choices, default=Especie.CACHORRO, help_text="Espécie do animal: cachorro, gato ou outro")
     raca = models.CharField(max_length=100, blank=True)
     idade = models.PositiveIntegerField(blank=True, null=True, help_text="Idade em anos")
     descricao = models.TextField(blank=True)
@@ -106,7 +106,7 @@ class PedidoAdocao(models.Model):
         related_name="pedidos_adocao",
     )
     mensagem = models.TextField(blank=True)
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDENTE)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDENTE, help_text="Status do pedido: pendente, aprovado, rejeitado, cancelado")
     data_pedido = models.DateTimeField(auto_now_add=True)
     data_resposta = models.DateTimeField(blank=True, null=True)
 

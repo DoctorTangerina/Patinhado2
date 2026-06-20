@@ -8,3 +8,4 @@ djangorestframework
 djangorestframework-simplejwt
 setuptools
 django-cors-headers
+drf-spectacular
