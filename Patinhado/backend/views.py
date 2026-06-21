@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -370,7 +370,7 @@ class ProfileView(APIView):
 )
 class PetListCreateAPIView(APIView):
     """List all pets or create a new pet."""
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -477,7 +477,7 @@ class PetListCreateAPIView(APIView):
 class PetDetailAPIView(APIView):
     """Retrieve, update, or delete a specific pet."""
     permission_classes = (IsDoadorOrReadOnly,)
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_object(self, pk):
         from django.shortcuts import get_object_or_404

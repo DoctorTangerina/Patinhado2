@@ -151,7 +151,6 @@ SPECTACULAR_SETTINGS = {
         "API para plataforma de adoção de animais Patinhado. "
         "Permite gerenciar pets, usuários e pedidos de adoção."
     ),
-    "CONTACT": {"name": "Patinhado", "email": "contato@patinhado.com"},
     "LICENSE": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     "SERVE_INCLUDE_SCHEMA": False,
     "SWAGGER_UI_SETTINGS": {
