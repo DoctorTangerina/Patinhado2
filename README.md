@@ -156,6 +156,7 @@ Patinhado2/
 ## Desenvolvedores
 
 - **Arthur Sardella**
+- **Ana Marques**
 
 ## Licença
 
