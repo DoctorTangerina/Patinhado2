@@ -8,6 +8,9 @@ API REST para plataforma de adoção de pets, desenvolvida em Django REST Framew
 
 - **Registro e Login**: Criação de conta com retorno de tokens JWT (access + refresh)
 - **Perfil de Usuário**: Visualização e edição dos dados pessoais (nome, email, telefone, endereço, foto)
+- **Dados Básicos**: Obtenção do ID e nome do usuário autenticado
+- **Senha**: Alteração de senha (autenticado), recuperação via e-mail e confirmação de reset
+- **Exclusão de Conta**: Soft delete da própria conta
 - **Tokens JWT**: Obtenção, renovação e verificação de tokens
 
 ### Gerenciamento de Pets (Doadores)
@@ -26,9 +29,7 @@ API REST para plataforma de adoção de pets, desenvolvida em Django REST Framew
 
 ### Recursos Adicionais
 
-- **Filtros**: Listagem de pets com filtros por espécie, status de adoção e doador
 - **Validações de Negócio**: Garante que animais adotados tenham adotante definido; impede adoção de animal já adotado
-- **Upload de Imagens**: Suporte a upload de fotos de pets e usuários
 - **Documentação Automática**: Swagger UI disponível em `/api/docs/`
 - **Testes Automatizados**: 25 testes cobrindo autenticação, pets e pedidos
 
@@ -49,13 +50,19 @@ O sistema de adoção funciona em três etapas via API:
 | `POST` | `/api/auth/token/` | Obter tokens JWT (login) |
 | `POST` | `/api/auth/token/refresh/` | Renovar access token |
 | `POST` | `/api/auth/token/verify/` | Verificar token JWT |
+| `GET` | `/api/auth/me/` | Obter ID e nome do usuário autenticado |
 | `GET/PUT/PATCH` | `/api/auth/profile/` | Gerenciar perfil do usuário |
+| `POST` | `/api/auth/password/change/` | Alterar senha (autenticado) |
+| `POST` | `/api/auth/password/reset/` | Solicitar recuperação de senha |
+| `POST` | `/api/auth/password/reset/confirm/` | Confirmar reset de senha |
+| `DELETE` | `/api/auth/account/delete/` | Excluir conta (soft delete) |
 | **Pets** | | |
 | `GET` | `/api/pets/` | Listar pets (com filtros) |
 | `POST` | `/api/pets/` | Cadastrar novo pet |
 | `GET/PUT/PATCH/DELETE` | `/api/pets/<id>/` | Detalhar, editar ou excluir pet |
 | **Pedidos de Adoção** | | |
 | `GET/POST` | `/api/pedidos/` | Listar ou criar pedidos |
+| `GET` | `/api/pedidos/recebidos/` | Listar pedidos recebidos (doador) |
 | `GET/PUT/PATCH/DELETE` | `/api/pedidos/<id>/` | Detalhar, editar ou excluir pedido |
 | `POST` | `/api/pedidos/<id>/aprovar/` | Aprovar pedido (doador) |
 | `POST` | `/api/pedidos/<id>/rejeitar/` | Rejeitar pedido (doador) |
@@ -186,7 +193,6 @@ Patinhado2/
 │   │   ├── permissions.py # Permissões personalizadas
 │   │   ├── urls.py        # Rotas da API
 │   │   └── tests.py       # Testes automatizados
-│   ├── frontend/           # Scaffold para frontend (futuro)
 │   ├── manage.py
 │   ├── .env.example
 │   └── requirements.txt
