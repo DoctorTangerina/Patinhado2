@@ -1,4 +1,4 @@
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -13,12 +13,17 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
     TokenVerifySerializer,
 )
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.conf import settings
 from drf_spectacular.utils import (
     OpenApiExample,
     OpenApiParameter,
     OpenApiResponse,
     extend_schema,
-    extend_schema_view,
+    extend_schema_view, inline_serializer,
 )
 
 from .models import Pet, PedidoAdocao, Usuario
@@ -31,6 +36,10 @@ from .serializers import (
     PetUpdateSerializer,
     RegistroSerializer,
     UsuarioSerializer,
+    PasswordResetSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordChangeSerializer,
+    DeleteAccountSerializer,
 )
 
 
@@ -121,11 +130,18 @@ class TokenVerifyViewExt(TokenVerifyView):
         description="Retorna id e nome do usuário logado com base no token JWT.",
         responses={
             200: OpenApiResponse(
+                response=inline_serializer(
+                    name="MeResponse",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "username": serializers.CharField(),
+                    }
+                ),
                 description="Dados do usuário",
                 examples=[
                     OpenApiExample(
                         "Sucesso",
-                        value={"id": 1, "nome": "João Silva"},
+                        value={"id": 1, "username": "João Silva"},
                         response_only=True,
                     ),
                 ],
@@ -141,7 +157,7 @@ class MeView(APIView):
         user = request.user
         return Response({
             "id": user.id,
-            "nome": user.get_full_name() or user.username,
+            "username": user.get_full_name() or user.username,
         })
 
 @extend_schema_view(
@@ -906,3 +922,304 @@ class PedidoCancelarAPIView(APIView):
         pedido.save()
         serializer = PedidoAdocaoSerializer(pedido)
         return Response(serializer.data)
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Pedidos de Adoção"],
+        summary="Pedidos dos pets do usuário autenticado",
+        description="Retorna todos os pedidos de adoção feitos para os pets que o usuário doou. Permite filtrar por status.",
+        parameters=[
+            OpenApiParameter(
+                name="status",
+                description="Filtrar por status (pendente, aprovado, rejeitado, cancelado)",
+                required=False,
+                type=str,
+                enum=["pendente", "aprovado", "rejeitado", "cancelado"],
+            ),
+        ],
+        responses={
+            200: PedidoAdocaoSerializer(many=True),
+            401: OpenApiResponse(description="Não autenticado"),
+        },
+        examples=[
+            OpenApiExample(
+                "Resposta Exemplo",
+                value=[{
+                    "id": 1,
+                    "solicitante": 2,
+                    "solicitante_nome": "Maria Santos",
+                    "animal": 1,
+                    "animal_nome": "Rex",
+                    "mensagem": "Gostaria de adotar o Rex",
+                    "status": "pendente",
+                    "data_pedido": "2024-01-12T09:15:00Z",
+                    "data_resposta": None,
+                }],
+                response_only=True,
+            ),
+        ],
+    ),
+)
+class PedidosRecebidosAPIView(APIView):
+    """List adoption requests received for the authenticated user's pets."""
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        queryset = PedidoAdocao.objects.filter(animal__doador=request.user)
+        status_param = request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        serializer = PedidoAdocaoSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Autenticação"],
+        summary="Solicitar recuperação de senha",
+        description="Envia e-mail com link para redefinição de senha. O link contém uid e token que devem ser usados no endpoint de confirmação.",
+        request=PasswordResetSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="E-mail enviado (verifique console do servidor)",
+                examples=[
+                    OpenApiExample(
+                        "Sucesso",
+                        value={"detail": "Se o e-mail existir, um link de recuperação será enviado."},
+                        response_only=True,
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(description="E-mail inválido"),
+        },
+        auth=[],
+        examples=[
+            OpenApiExample(
+                "Exemplo de Requisição",
+                value={"email": "joao@email.com"},
+                request_only=True,
+            ),
+        ],
+    ),
+)
+class PasswordResetView(APIView):
+    """Request password reset email."""
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.validated_data["email"]
+        user = Usuario.objects.get(email__iexact=email, is_active=True)
+
+        token_generator = PasswordResetTokenGenerator()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = token_generator.make_token(user)
+
+        reset_link = "http://localhost:3000/accounts/password_reset_confirm.html?uid=" + uid + "&token=" + token
+        if settings.DEBUG:
+            print(f"\n🔑 RESET LINK:\n{reset_link}\n")
+
+        html = f"""
+        <html>
+        <body style="margin:0;padding:40px;background:#f5f5f5;font-family:sans-serif;">
+          <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;">
+
+            <h2 style="margin-top:0;color:#111;">Redefinição de senha</h2>
+
+            <p style="color:#444;">
+              Você solicitou a redefinição da sua senha. 
+              Clique no botão abaixo para continuar:
+            </p>
+
+            <a href="{reset_link}" style="
+              display:inline-block;
+              margin:8px 0 24px;
+              padding:12px 28px;
+              background:#1a73e8;
+              color:#fff;
+              border-radius:6px;
+              text-decoration:none;
+              font-weight:bold;
+              font-size:15px;
+            ">Redefinir senha</a>
+
+            <p style="color:#999;font-size:12px;margin:0;">
+              Se você não solicitou isso, ignore este email. 
+              O link expira em 24 horas.
+            </p>
+
+          </div>
+        </body>
+        </html>
+        """
+
+        msg = EmailMultiAlternatives(
+            subject="Redefinição de senha",
+            body=f"Acesse o link para redefinir sua senha:\n{reset_link}",  # fallback plain text
+            from_email="noreply@seusite.com",
+            to=[user.email],
+        )
+        msg.attach_alternative(html, "text/html")
+        msg.send()
+
+        return Response(
+            {"detail": "Se o e-mail existir, um link de recuperação será enviado."},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Autenticação"],
+        summary="Confirmar recuperação de senha",
+        description="Redefine a senha usando o uid e token recebidos por e-mail.",
+        request=PasswordResetConfirmSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Senha alterada com sucesso",
+                examples=[
+                    OpenApiExample(
+                        "Sucesso",
+                        value={"detail": "Senha alterada com sucesso."},
+                        response_only=True,
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(description="UID ou token inválido, ou senhas não conferem"),
+        },
+        auth=[],
+        examples=[
+            OpenApiExample(
+                "Exemplo de Requisição",
+                value={
+                    "uid": "MQ",
+                    "token": "abc123...",
+                    "new_password": "novaSenha123",
+                    "confirm_password": "novaSenha123",
+                },
+                request_only=True,
+            ),
+        ],
+    ),
+)
+class PasswordResetConfirmView(APIView):
+    """Confirm password reset with token."""
+    permission_classes = (AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+
+        return Response(
+            {"detail": "Senha alterada com sucesso."},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Autenticação"],
+        summary="Alterar senha",
+        description="Altera a senha do usuário autenticado. Requer senha atual.",
+        request=PasswordChangeSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Senha alterada com sucesso",
+                examples=[
+                    OpenApiExample(
+                        "Sucesso",
+                        value={"detail": "Senha alterada com sucesso."},
+                        response_only=True,
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(description="Senha atual incorreta ou novas senhas não conferem"),
+            401: OpenApiResponse(description="Não autenticado"),
+        },
+        examples=[
+            OpenApiExample(
+                "Exemplo de Requisição",
+                value={
+                    "old_password": "senhaAntiga123",
+                    "new_password": "novaSenha123",
+                    "new_password2": "novaSenha123",
+                },
+                request_only=True,
+            ),
+        ],
+    ),
+)
+class PasswordChangeView(APIView):
+    """Change password for authenticated user."""
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.set_password(serializer.validated_data["new_password"])
+        user.save()
+
+        return Response(
+            {"detail": "Senha alterada com sucesso."},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema_view(
+    delete=extend_schema(
+        tags=["Autenticação"],
+        summary="Excluir conta (soft delete)",
+        description="Desativa a conta do usuário autenticado (soft delete). Requer senha para confirmação.",
+        request=DeleteAccountSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Conta desativada com sucesso",
+                examples=[
+                    OpenApiExample(
+                        "Sucesso",
+                        value={"detail": "Conta desativada com sucesso."},
+                        response_only=True,
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(description="Senha incorreta"),
+            401: OpenApiResponse(description="Não autenticado"),
+        },
+        examples=[
+            OpenApiExample(
+                "Exemplo de Requisição",
+                value={"password": "minhaSenha123"},
+                request_only=True,
+            ),
+        ],
+    ),
+)
+class DeleteAccountView(APIView):
+    """Soft delete authenticated user's account."""
+    permission_classes = (IsAuthenticated,)
+
+    def delete(self, request):
+        serializer = DeleteAccountSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+        return Response(
+            {"detail": "Conta desativada com sucesso."},
+            status=status.HTTP_200_OK,
+        )

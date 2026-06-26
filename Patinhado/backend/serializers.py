@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
 from drf_spectacular.utils import OpenApiExample, extend_schema_field, extend_schema_serializer
 
 from .models import Usuario, Pet, PedidoAdocao
@@ -215,3 +218,76 @@ class PedidoAdocaoCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["solicitante"] = self.context["request"].user
         return super().create(validated_data)
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, email):
+        if not Usuario.objects.filter(email__iexact=email, is_active=True).exists():
+            raise serializers.ValidationError("Nenhum usuário ativo encontrado com este e-mail.")
+        return email
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password2 = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        token_generator = PasswordResetTokenGenerator()
+
+        try:
+            uid = urlsafe_base64_decode(attrs["uid"]).decode()
+        except (TypeError, ValueError, OverflowError):
+            raise serializers.ValidationError({"uid": "UID malformado."})
+
+        try:
+            user = Usuario.objects.get(pk=uid, is_active=True)
+        except Usuario.DoesNotExist:
+            raise serializers.ValidationError({"uid": "Usuário não encontrado ou inativo."})
+
+
+        if not token_generator.check_token(user, attrs["token"]):
+            raise serializers.ValidationError({"token": "Token inválido ou expirado."})
+
+        if attrs["new_password"] != attrs["new_password2"]:
+            raise serializers.ValidationError({"confirm_password": "As senhas não conferem."})
+
+        attrs["user"] = user
+        return attrs
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password2 = serializers.CharField(write_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        self.user = request.user if request else None
+
+    def validate_current_password(self, value):
+        if not self.user.check_password(value):
+            raise serializers.ValidationError("Senha atual incorreta.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["new_password2"]:
+            raise serializers.ValidationError({"confirm_password": "As senhas não conferem."})
+        return attrs
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = self.context["request"].user
+
+    def validate_password(self, value):
+        if not self.user.check_password(value):
+            raise serializers.ValidationError("Senha incorreta.")
+        return value

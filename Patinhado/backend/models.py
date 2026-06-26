@@ -1,13 +1,24 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+
+class UsuarioManager(UserManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+    def all_with_inactive(self):
+        return super().get_queryset()
 
 
 class Usuario(AbstractUser):
     telefone = models.CharField(max_length=20, blank=True)
     endereco = models.TextField(blank=True)
     imagem = models.ImageField(upload_to="usuarios/", blank=True, null=True)
+
+    objects = UsuarioManager()
+    all_objects = UserManager()
 
     def save(self, *args, **kwargs):
         if not self.pk and not self.password:

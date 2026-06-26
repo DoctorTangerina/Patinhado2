@@ -151,6 +151,9 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@patinhado.com"
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Patinhado API",
     "VERSION": "1.0.0",
