@@ -1,0 +1,10 @@
+.venv/
+.venv/
+.idea/
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.env
+db.sqlite3
+README.md

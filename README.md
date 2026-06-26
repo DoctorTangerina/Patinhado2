@@ -73,6 +73,7 @@ O sistema de adoção funciona em três etapas via API:
 - **Senhas**: Argon2 (argon2-cffi 25.1.0)
 - **Documentação**: drf-spectacular (OpenAPI 3.0.3 + Swagger UI)
 - **Ambiente**: python-dotenv
+- **Containerizaçao**: Docker + Docker Compose
 
 ## Como Usar
 
@@ -123,10 +124,50 @@ O sistema de adoção funciona em três etapas via API:
    - API: http://127.0.0.1:8000/api/
    - Swagger UI: http://127.0.0.1:8000/api/docs/
 
+### Usando Docker
+
+#### Pré-requisitos
+
+- Docker
+- Docker Compose
+
+#### Execuçao com Docker Compose
+
+1. Certifique-se de que o arquivo `Patinhado/.env` existe (copie de `.env.example` se necessário).
+
+2. Construa e inicie o container:
+   ```bash
+   docker compose up -d
+   ```
+
+3. O servidor estará disponível em `http://127.0.0.1:8000/`.
+
+4. Para criar um superusuário:
+   ```bash
+   docker compose exec web python manage.py createsuperuser
+   ```
+
+5. Para executar os testes:
+   ```bash
+   docker compose exec web python manage.py test backend.tests
+   ```
+
+6. Para parar o container:
+   ```bash
+   docker compose down
+   ```
+
+#### Build manual da imagem
+
+```bash
+docker build -t patinhado2 .
+docker run -p 8000:8000 --env-file Patinhado/.env patinhado2
+```
+
 ### Executar Testes
 
 ```bash
-python manage.py test
+python manage.py test backend.tests
 ```
 
 ### Estrutura do Projeto
@@ -149,6 +190,9 @@ Patinhado2/
 │   ├── manage.py
 │   ├── .env.example
 │   └── requirements.txt
+├── Dockerfile              # Imagem Docker baseada em python:alpine
+├── docker-compose.yml      # Orquestraçao do container web
+├── .dockerignore           # Arquivos ignorados pelo Docker
 ├── schema.yml              # Schema OpenAPI exportado
 └── LICENSE
 ```

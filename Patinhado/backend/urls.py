@@ -7,6 +7,7 @@ urlpatterns = [
     path("auth/token/refresh/", views.TokenRefreshViewExt.as_view(), name="token_refresh"),
     path("auth/token/verify/", views.TokenVerifyViewExt.as_view(), name="token_verify"),
     path("auth/profile/", views.ProfileView.as_view(), name="auth_profile"),
+    path("auth/me/", views.MeView.as_view(), name="auth_me"),
     path("pets/", views.PetListCreateAPIView.as_view(), name="pet_list_create"),
     path("pets/<int:pk>/", views.PetDetailAPIView.as_view(), name="pet_detail"),
     path("pedidos/", views.PedidoListCreateAPIView.as_view(), name="pedido_list_create"),

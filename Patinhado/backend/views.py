@@ -114,6 +114,35 @@ class TokenRefreshViewExt(TokenRefreshView):
 class TokenVerifyViewExt(TokenVerifyView):
     pass
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["Autenticação"],
+        summary="Obter dados básicos do usuário autenticado",
+        description="Retorna id e nome do usuário logado com base no token JWT.",
+        responses={
+            200: OpenApiResponse(
+                description="Dados do usuário",
+                examples=[
+                    OpenApiExample(
+                        "Sucesso",
+                        value={"id": 1, "nome": "João Silva"},
+                        response_only=True,
+                    ),
+                ],
+            ),
+            401: OpenApiResponse(description="Não autenticado"),
+        },
+    ),
+)
+class MeView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "id": user.id,
+            "nome": user.get_full_name() or user.username,
+        })
 
 @extend_schema_view(
     post=extend_schema(
